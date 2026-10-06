@@ -1,0 +1,12 @@
+import 'dotenv/config';
+import pg from 'pg';
+import { execFileSync } from 'node:child_process';
+const url = new URL(process.env.DATABASE_URL);
+if (url.hostname !== '127.0.0.1' || url.port !== '55432') throw new Error('Tests réservés au PostgreSQL local dédié.');
+const admin = new pg.Client({ connectionString: url.toString() });
+await admin.connect();
+if (!(await admin.query("SELECT 1 FROM pg_database WHERE datname = 'stockflow_test'")).rowCount) await admin.query('CREATE DATABASE stockflow_test');
+await admin.end();
+url.pathname = '/stockflow_test';
+execFileSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'deploy'], { windowsHide: true, stdio: 'inherit', env: { ...process.env, DATABASE_URL: url.toString() } });
+execFileSync(process.execPath, ['--test', '--test-concurrency=1', 'test/operations.integration.cjs', 'test/approved-decisions.integration.cjs', 'test/finance.integration.cjs', 'test/application.integration.cjs', 'test/product-supplier.integration.cjs', 'test/invoice-price-review.integration.cjs'], { windowsHide: true, stdio: 'inherit' });

@@ -1,0 +1,30 @@
+services:
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://stockflow:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/stockflow?schema=public
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      PORT: 3001
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: stockflow
+      POSTGRES_USER: stockflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - stockflow_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stockflow -d stockflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  stockflow_pg:
